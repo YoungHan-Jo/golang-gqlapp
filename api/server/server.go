@@ -1,16 +1,20 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/younghan-jo/gqlgen-todos/api/graph"
+	"github.com/deepmap/oapi-codegen/pkg/middleware"
+	"github.com/labstack/echo/v4"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
+	_ "github.com/lib/pq"
+	"github.com/rs/zerolog/log"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/younghan-jo/gqlgen-todos/api/env"
 	"github.com/younghan-jo/gqlgen-todos/api/handler"
 )
 
@@ -25,7 +29,7 @@ type server struct {
 
 func NewServer() *server {
 
-	debug := flag.Bool("debug", false, "is Debug Mode")
+	debug := flag.Bool("debug", true, "is Debug Mode")
 	flag.Parse()
 
 	// Swagger
@@ -39,25 +43,102 @@ func NewServer() *server {
 	newLog(*debug)
 
 	// DB
-	newDB(fmt.Sprintf(
+	db, err := newDB(fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		env.Get().DB.Host,
+		env.Get().DB.Port,
+		env.Get().DB.User,
+		env.Get().DB.Password,
+		env.Get().DB.Database,
 	))
-
-}
-
-const defaultPort = "8080"
-
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
+	if err != nil {
+		panic(err)
 	}
 
-	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+	// init boiler
+	boil.SetDB(db)
+	boil.DebugMode = *debug
+	boil.DebugWriter = log.Logger
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	// echo server
+	e := echo.New()
+	e.Use(
+		// CORS Policy
+		echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
+			AllowOrigins: []string{
+				env.Get().AllowOrigin,
+			},
+			AllowMethods: []string{
+				http.MethodGet,
+				http.MethodHead,
+				http.MethodPost,
+				http.MethodPut,
+				http.MethodPatch,
+				http.MethodDelete,
+				http.MethodConnect,
+				http.MethodOptions,
+				http.MethodTrace,
+			},
+			AllowHeaders: []string{"*"},
+		}),
+		// Recovery
+		echomiddleware.Recover(),
+		// Request Logger
+		echomiddleware.RequestLoggerWithConfig(echomiddleware.RequestLoggerConfig{
+			LogURI:    true,
+			LogStatus: true,
+			LogMethod: true,
+			LogValuesFunc: func(c echo.Context, v echomiddleware.RequestLoggerValues) error {
+				log.Info().
+					Str("method", v.Method).
+					Str("URI", v.URI).
+					Int("status", v.Status).
+					Msg("request")
+				return nil
+			},
+		}),
+		// OpenAPI Validator for swagger
+		middleware.OapiRequestValidator(swagger),
+	)
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	if h, err := handler.NewHandler(); err != nil {
+		panic(err)
+	} else {
+		handler.RegisterHandlers(e, h)
+	}
+
+	return &server{
+		srv: &http.Server{
+			Addr:    fmt.Sprintf(":%d", env.Get().Server.Port),
+			Handler: e.Server.Handler,
+		},
+		db: db,
+	}
+}
+
+func (s *server) Run() error {
+	log.Info().Msgf("server listening on %s\n", s.srv.Addr)
+
+	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+
+	return nil
+}
+
+func (s *server) Shutdown() {
+	log.Info().Msg("Server shutting down...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), serverTimeout)
+	defer cancel()
+
+	if err := s.srv.Shutdown(ctx); err != nil {
+		panic(err)
+	}
+
+	if err := s.db.Close(); err != nil {
+		panic(err)
+	}
+
+	log.Info().Msg("Server terminated")
 }

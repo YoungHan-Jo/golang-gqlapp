@@ -96,6 +96,11 @@ type ClientInterface interface {
 	AddCommentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	AddComment(ctx context.Context, body AddCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostGraphqlWithBody request with any body
+	PostGraphqlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostGraphql(ctx context.Context, body PostGraphqlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetComments(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -124,6 +129,30 @@ func (c *Client) AddCommentWithBody(ctx context.Context, contentType string, bod
 
 func (c *Client) AddComment(ctx context.Context, body AddCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAddCommentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostGraphqlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostGraphqlRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostGraphql(ctx context.Context, body PostGraphqlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostGraphqlRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +230,46 @@ func NewAddCommentRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
+// NewPostGraphqlRequest calls the generic PostGraphql builder with application/json body
+func NewPostGraphqlRequest(server string, body PostGraphqlJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostGraphqlRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostGraphqlRequestWithBody generates requests for PostGraphql with any type of body
+func NewPostGraphqlRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/graphql")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -251,6 +320,11 @@ type ClientWithResponsesInterface interface {
 	AddCommentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddCommentResponse, error)
 
 	AddCommentWithResponse(ctx context.Context, body AddCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*AddCommentResponse, error)
+
+	// PostGraphqlWithBodyWithResponse request with any body
+	PostGraphqlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostGraphqlResponse, error)
+
+	PostGraphqlWithResponse(ctx context.Context, body PostGraphqlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostGraphqlResponse, error)
 }
 
 type GetCommentsResponse struct {
@@ -299,6 +373,32 @@ func (r AddCommentResponse) StatusCode() int {
 	return 0
 }
 
+type PostGraphqlResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		// Data Query result
+		Data   *map[string]interface{}   `json:"data,omitempty"`
+		Errors *[]map[string]interface{} `json:"errors,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r PostGraphqlResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostGraphqlResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // GetCommentsWithResponse request returning *GetCommentsResponse
 func (c *ClientWithResponses) GetCommentsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCommentsResponse, error) {
 	rsp, err := c.GetComments(ctx, reqEditors...)
@@ -323,6 +423,23 @@ func (c *ClientWithResponses) AddCommentWithResponse(ctx context.Context, body A
 		return nil, err
 	}
 	return ParseAddCommentResponse(rsp)
+}
+
+// PostGraphqlWithBodyWithResponse request with arbitrary body returning *PostGraphqlResponse
+func (c *ClientWithResponses) PostGraphqlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostGraphqlResponse, error) {
+	rsp, err := c.PostGraphqlWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostGraphqlResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostGraphqlWithResponse(ctx context.Context, body PostGraphqlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostGraphqlResponse, error) {
+	rsp, err := c.PostGraphql(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostGraphqlResponse(rsp)
 }
 
 // ParseGetCommentsResponse parses an HTTP response from a GetCommentsWithResponse call
@@ -385,6 +502,36 @@ func ParseAddCommentResponse(rsp *http.Response) (*AddCommentResponse, error) {
 			return nil, err
 		}
 		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostGraphqlResponse parses an HTTP response from a PostGraphqlWithResponse call
+func ParsePostGraphqlResponse(rsp *http.Response) (*PostGraphqlResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostGraphqlResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			// Data Query result
+			Data   *map[string]interface{}   `json:"data,omitempty"`
+			Errors *[]map[string]interface{} `json:"errors,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 

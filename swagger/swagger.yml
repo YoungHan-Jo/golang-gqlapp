@@ -11,8 +11,41 @@ info:
     name: MIT
     url: https://opensource.org/licenses/mit-license.php
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:9090
 paths:
+  /graphql:
+    post:
+      tags:
+        - etc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: GraphQL query
+                variables:
+                  type: object
+                  description: Variables for the query (if any)
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: Query result
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      description: GraphQL errors (if any)
   /comments:
     post:
       description: create a new comment

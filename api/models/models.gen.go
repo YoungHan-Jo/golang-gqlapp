@@ -32,5 +32,17 @@ type NewComment struct {
 	Text string `json:"text"`
 }
 
+// PostGraphqlJSONBody defines parameters for PostGraphql.
+type PostGraphqlJSONBody struct {
+	// Query GraphQL query
+	Query *string `json:"query,omitempty"`
+
+	// Variables Variables for the query (if any)
+	Variables *map[string]interface{} `json:"variables,omitempty"`
+}
+
 // AddCommentJSONRequestBody defines body for AddComment for application/json ContentType.
 type AddCommentJSONRequestBody = NewComment
+
+// PostGraphqlJSONRequestBody defines body for PostGraphql for application/json ContentType.
+type PostGraphqlJSONRequestBody PostGraphqlJSONBody

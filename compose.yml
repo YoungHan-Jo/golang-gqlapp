@@ -14,14 +14,14 @@ services:
 
   database:
     image: postgres:latest
-    container_name: kikumemo-database
+    container_name: gqlapp-db
     volumes:
       - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-      - ./database/testdata/test_tasks.sql:/docker-entrypoint-initdb.d/test_tasks.sql
-      - ./database/testdata/test_companies.sql:/docker-entrypoint-initdb.d/test_companies.sql
-      - ./database/testdata/test_hearings.sql:/docker-entrypoint-initdb.d/test_hearings.sql
+      # - ./database/testdata/test_tasks.sql:/docker-entrypoint-initdb.d/test_tasks.sql
+      # - ./database/testdata/test_companies.sql:/docker-entrypoint-initdb.d/test_companies.sql
+      # - ./database/testdata/test_hearings.sql:/docker-entrypoint-initdb.d/test_hearings.sql
     ports:
-      - 5432:5432
+      - 5555:5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -30,9 +30,9 @@ services:
 
   gateway:
     image: hasura/graphql-engine:v2.31.0
-    container_name: kikumemo-gateway
+    container_name: gqlapp-gateway
     ports:
-      - 8080:8080
+      - 9090:8080
     environment:
       HASURA_GRAPHQL_METADATA_DATABASE_URL: postgres://postgres:postgres@database:5432/kikumemodb
       PG_DATABASE_URL: postgres://postgres:postgres@database:5432/kikumemodb
@@ -42,15 +42,15 @@ services:
       HASURA_GRAPHQL_METADATA_DIR: /hasura-metadata
       HASURA_GRAPHQL_MIGRATIONS_DIR: /hasura-migrations
       HASURA_GRAPHQL_ADMIN_SECRET: hasuraadmin
-      HASURA_GRAPHQL_AKUAS_BACKEND_REMOTE_SCHEMA_URL: http://api:8081/graphql
+      HASURA_GRAPHQL_AKUAS_BACKEND_REMOTE_SCHEMA_URL: http://api:9001/graphql
       HASURA_GRAPHQL_EXPERIMENTAL_FEATURES: naming_convention
-      HASURA_GRAPHQL_JWT_SECRET: >
-        {
-          "type":"RS256",
-          "jwk_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com", 
-          "audience": "dev-kikumemo", 
-          "issuer": "https://securetoken.google.com/dev-kikumemo"
-        }
+      # HASURA_GRAPHQL_JWT_SECRET: >
+      #   {
+      #     "type":"RS256",
+      #     "jwk_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+      #     "audience": "dev-kikumemo",
+      #     "issuer": "https://securetoken.google.com/dev-kikumemo"
+      #   }
     restart: always
     depends_on:
       - database

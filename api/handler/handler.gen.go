@@ -29,6 +29,9 @@ type ServerInterface interface {
 
 	// (POST /comments)
 	AddComment(ctx echo.Context) error
+
+	// (POST /graphql)
+	PostGraphql(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -51,6 +54,15 @@ func (w *ServerInterfaceWrapper) AddComment(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.AddComment(ctx)
+	return err
+}
+
+// PostGraphql converts echo context to params.
+func (w *ServerInterfaceWrapper) PostGraphql(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostGraphql(ctx)
 	return err
 }
 
@@ -84,6 +96,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/comments", wrapper.GetComments)
 	router.POST(baseURL+"/comments", wrapper.AddComment)
+	router.POST(baseURL+"/graphql", wrapper.PostGraphql)
 
 }
 
@@ -144,6 +157,27 @@ func (response AddCommentdefaultJSONResponse) VisitAddCommentResponse(w http.Res
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
+type PostGraphqlRequestObject struct {
+	Body *PostGraphqlJSONRequestBody
+}
+
+type PostGraphqlResponseObject interface {
+	VisitPostGraphqlResponse(w http.ResponseWriter) error
+}
+
+type PostGraphql200JSONResponse struct {
+	// Data Query result
+	Data   *map[string]interface{}   `json:"data,omitempty"`
+	Errors *[]map[string]interface{} `json:"errors,omitempty"`
+}
+
+func (response PostGraphql200JSONResponse) VisitPostGraphqlResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -152,6 +186,9 @@ type StrictServerInterface interface {
 
 	// (POST /comments)
 	AddComment(ctx context.Context, request AddCommentRequestObject) (AddCommentResponseObject, error)
+
+	// (POST /graphql)
+	PostGraphql(ctx context.Context, request PostGraphqlRequestObject) (PostGraphqlResponseObject, error)
 }
 
 type StrictHandlerFunc = runtime.StrictEchoHandlerFunc
@@ -218,19 +255,50 @@ func (sh *strictHandler) AddComment(ctx echo.Context) error {
 	return nil
 }
 
+// PostGraphql operation middleware
+func (sh *strictHandler) PostGraphql(ctx echo.Context) error {
+	var request PostGraphqlRequestObject
+
+	var body PostGraphqlJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostGraphql(ctx.Request().Context(), request.(PostGraphqlRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostGraphql")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostGraphqlResponseObject); ok {
+		return validResponse.VisitPostGraphqlResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("Unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+RVT2vcPhD9KmZ+v6NjO20pQaemoZRA/+TQnkIoijy2Faw/HY0bL4u/e5F2vc7ipaGQ",
-	"W29j6c2bmSc9eQvKGe8sWg4gthBUh0am8MoZg5ZjKPv+awPidgv/EzYg4L9ySSv3OeUXfJxzpvzP0Ihz",
-	"9oacR2KNAaa7KYfVqtiCP/pShJKx/iFTW40jEyOoJeMZa4OQA288goDApG0LUw66PsJqy2/fLDhtGVuk",
-	"CBx8/Zfk02HF3T+ginPDByJH684NhiBbjOGahPDnoAlrELcH4N0J7icKrwowjmnVyPET2pY7EOdVlT9T",
-	"LWWtS0WYto1LmjvLUiVuNFL3IGAcx3fjOBbKGcjBShNzSVvXDqrTkMNAEdYx+yDK8rBTWExz1BgUac/a",
-	"WRBweXOdNY4ys1Hk7nvXQg69VmhDkmtP//n624rYebTBDaSwcNSW+6RQGs1n+4/Cdz6WZM19otFLkV9I",
-	"YdfCeVEVVYRFRuk1CHidlnLwkrskcLzHZvZJi0mQ40Fa5OwASlwk49Z1DQI+Il8te4TBu9hrZHlVVbPQ",
-	"s+G877VKyeVDiOSzNWP0nLOSA6eVzvvWsrn27iQaOfT8YuV3t/9E8cHi6FEx1hkuGO/CCR13Ls9kZvFx",
-	"FnSl52VdXx224pXGwO9dvXmxUZ4+Z8e2YRpw+gfP8PuJM4yogBStlH4Qi0FFWfZOyb5zgcVFdVHFR/53",
-	"AAAA//9UwByBcAYAAA==",
+	"H4sIAAAAAAAC/+RWW0/sNhD+K9G0D60UNqGtKpGnUlQhJNqCzuUFoSPjTBKj+MJ4Almt8t+P7Gx2ibKA",
+	"zhFv582xv/lm/M3F2YC02lmDhj0UG/CyQS3i8sxqjYbDUrTt/xUUNxv4mbCCAn7K9mbZ1ib7D58mmyF9",
+	"HRpw1lyRdUis0MNwO6Sw2C024GZfklAwll9EDKuypMMKSsF4xEojpMBrh1CAZ1KmhiEFVc6wyvCff+xx",
+	"yjDWSAHYufIbyYfdjr27RxnuDf8QWVpGrtF7UWNYLkkIHzpFWEJxswPeHuB+pvDCAWMfd7XoL9HU3EBx",
+	"nOfpG96i1dJVgClT2ai5NSxk5EYtVAsF9H3/V9/3K2k1pGCEDrakjK072ShIoaMAa5idL7Jsd7IyGO9R",
+	"opekHCtroIDTq4ukspTotSR719oaUmiVROOjXFv6fy8+LoitQ+NtRxJXlupsa+Qzrfho+7FyjQsuWXEb",
+	"adTeySOSH0M4XuWrPMACo3AKCvg9bqXgBDdR4FDHeuqTGqMg84vUyMkOFLlIhKOLEgo4Rz7bnxF6Z0Os",
+	"geW3PJ+EnhrOuVbJaJzd+0A+tWZYvdVZsQOHhc7b0JLJ95iJSnQtv5v7sfoPOO8M9g4lY5ngHuOsP6Dj",
+	"2OWJSAw+TYIu9Dwty7PdUShp9Py3LdfvdpXn42zeNkwdDj9gDj8dyOGQQlaTcM1DG2fSNqHzXF1Zz+db",
+	"0Pcnaz7vHjqk9bJ2opvry2Q8PvAcPApS4q4dSea2n6ejOI64wZEl+UVViTDrX2E5Jw9OzvetlPm1S8Fi",
+	"Gfl1jJPQhzo48HDEdEV7xaj9y7KNwFduvNsQRGL9kgJz8g+dlOh91bXP6jYYitqHRwhZwm2080hhKMdf",
+	"jf2oL7KstVK0jfVcnOQnefhd+BoAAP//U+76BLoIAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
