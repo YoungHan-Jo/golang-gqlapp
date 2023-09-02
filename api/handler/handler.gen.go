@@ -24,14 +24,17 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
-	// (GET /comments)
-	GetComments(ctx echo.Context) error
+	// (GET /companies)
+	GetCompanies(ctx echo.Context) error
 
-	// (POST /comments)
-	AddComment(ctx echo.Context) error
+	// (POST /companies)
+	AddCompany(ctx echo.Context) error
 
 	// (POST /graphql)
 	PostGraphql(ctx echo.Context) error
+
+	// (GET /playground)
+	GetPlayground(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -39,21 +42,21 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// GetComments converts echo context to params.
-func (w *ServerInterfaceWrapper) GetComments(ctx echo.Context) error {
+// GetCompanies converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCompanies(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetComments(ctx)
+	err = w.Handler.GetCompanies(ctx)
 	return err
 }
 
-// AddComment converts echo context to params.
-func (w *ServerInterfaceWrapper) AddComment(ctx echo.Context) error {
+// AddCompany converts echo context to params.
+func (w *ServerInterfaceWrapper) AddCompany(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.AddComment(ctx)
+	err = w.Handler.AddCompany(ctx)
 	return err
 }
 
@@ -63,6 +66,15 @@ func (w *ServerInterfaceWrapper) PostGraphql(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostGraphql(ctx)
+	return err
+}
+
+// GetPlayground converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPlayground(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetPlayground(ctx)
 	return err
 }
 
@@ -94,63 +106,64 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/comments", wrapper.GetComments)
-	router.POST(baseURL+"/comments", wrapper.AddComment)
+	router.GET(baseURL+"/companies", wrapper.GetCompanies)
+	router.POST(baseURL+"/companies", wrapper.AddCompany)
 	router.POST(baseURL+"/graphql", wrapper.PostGraphql)
+	router.GET(baseURL+"/playground", wrapper.GetPlayground)
 
 }
 
-type GetCommentsRequestObject struct {
+type GetCompaniesRequestObject struct {
 }
 
-type GetCommentsResponseObject interface {
-	VisitGetCommentsResponse(w http.ResponseWriter) error
+type GetCompaniesResponseObject interface {
+	VisitGetCompaniesResponse(w http.ResponseWriter) error
 }
 
-type GetComments200JSONResponse Comment
+type GetCompanies200JSONResponse Company
 
-func (response GetComments200JSONResponse) VisitGetCommentsResponse(w http.ResponseWriter) error {
+func (response GetCompanies200JSONResponse) VisitGetCompaniesResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetCommentsdefaultJSONResponse struct {
+type GetCompaniesdefaultJSONResponse struct {
 	Body       Error
 	StatusCode int
 }
 
-func (response GetCommentsdefaultJSONResponse) VisitGetCommentsResponse(w http.ResponseWriter) error {
+func (response GetCompaniesdefaultJSONResponse) VisitGetCompaniesResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
 
 	return json.NewEncoder(w).Encode(response.Body)
 }
 
-type AddCommentRequestObject struct {
-	Body *AddCommentJSONRequestBody
+type AddCompanyRequestObject struct {
+	Body *AddCompanyJSONRequestBody
 }
 
-type AddCommentResponseObject interface {
-	VisitAddCommentResponse(w http.ResponseWriter) error
+type AddCompanyResponseObject interface {
+	VisitAddCompanyResponse(w http.ResponseWriter) error
 }
 
-type AddComment200JSONResponse Comment
+type AddCompany200JSONResponse Company
 
-func (response AddComment200JSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+func (response AddCompany200JSONResponse) VisitAddCompanyResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type AddCommentdefaultJSONResponse struct {
+type AddCompanydefaultJSONResponse struct {
 	Body       Error
 	StatusCode int
 }
 
-func (response AddCommentdefaultJSONResponse) VisitAddCommentResponse(w http.ResponseWriter) error {
+func (response AddCompanydefaultJSONResponse) VisitAddCompanyResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
 
@@ -178,17 +191,48 @@ func (response PostGraphql200JSONResponse) VisitPostGraphqlResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetPlaygroundRequestObject struct {
+}
+
+type GetPlaygroundResponseObject interface {
+	VisitGetPlaygroundResponse(w http.ResponseWriter) error
+}
+
+type GetPlayground200JSONResponse Playground
+
+func (response GetPlayground200JSONResponse) VisitGetPlaygroundResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPlaygrounddefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetPlaygrounddefaultJSONResponse) VisitGetPlaygroundResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
-	// (GET /comments)
-	GetComments(ctx context.Context, request GetCommentsRequestObject) (GetCommentsResponseObject, error)
+	// (GET /companies)
+	GetCompanies(ctx context.Context, request GetCompaniesRequestObject) (GetCompaniesResponseObject, error)
 
-	// (POST /comments)
-	AddComment(ctx context.Context, request AddCommentRequestObject) (AddCommentResponseObject, error)
+	// (POST /companies)
+	AddCompany(ctx context.Context, request AddCompanyRequestObject) (AddCompanyResponseObject, error)
 
 	// (POST /graphql)
 	PostGraphql(ctx context.Context, request PostGraphqlRequestObject) (PostGraphqlResponseObject, error)
+
+	// (GET /playground)
+	GetPlayground(ctx context.Context, request GetPlaygroundRequestObject) (GetPlaygroundResponseObject, error)
 }
 
 type StrictHandlerFunc = runtime.StrictEchoHandlerFunc
@@ -203,52 +247,52 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
-// GetComments operation middleware
-func (sh *strictHandler) GetComments(ctx echo.Context) error {
-	var request GetCommentsRequestObject
+// GetCompanies operation middleware
+func (sh *strictHandler) GetCompanies(ctx echo.Context) error {
+	var request GetCompaniesRequestObject
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetComments(ctx.Request().Context(), request.(GetCommentsRequestObject))
+		return sh.ssi.GetCompanies(ctx.Request().Context(), request.(GetCompaniesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetComments")
+		handler = middleware(handler, "GetCompanies")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(GetCommentsResponseObject); ok {
-		return validResponse.VisitGetCommentsResponse(ctx.Response())
+	} else if validResponse, ok := response.(GetCompaniesResponseObject); ok {
+		return validResponse.VisitGetCompaniesResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("Unexpected response type: %T", response)
 	}
 	return nil
 }
 
-// AddComment operation middleware
-func (sh *strictHandler) AddComment(ctx echo.Context) error {
-	var request AddCommentRequestObject
+// AddCompany operation middleware
+func (sh *strictHandler) AddCompany(ctx echo.Context) error {
+	var request AddCompanyRequestObject
 
-	var body AddCommentJSONRequestBody
+	var body AddCompanyJSONRequestBody
 	if err := ctx.Bind(&body); err != nil {
 		return err
 	}
 	request.Body = &body
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.AddComment(ctx.Request().Context(), request.(AddCommentRequestObject))
+		return sh.ssi.AddCompany(ctx.Request().Context(), request.(AddCompanyRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AddComment")
+		handler = middleware(handler, "AddCompany")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(AddCommentResponseObject); ok {
-		return validResponse.VisitAddCommentResponse(ctx.Response())
+	} else if validResponse, ok := response.(AddCompanyResponseObject); ok {
+		return validResponse.VisitAddCompanyResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("Unexpected response type: %T", response)
 	}
@@ -284,21 +328,45 @@ func (sh *strictHandler) PostGraphql(ctx echo.Context) error {
 	return nil
 }
 
+// GetPlayground operation middleware
+func (sh *strictHandler) GetPlayground(ctx echo.Context) error {
+	var request GetPlaygroundRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPlayground(ctx.Request().Context(), request.(GetPlaygroundRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPlayground")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetPlaygroundResponseObject); ok {
+		return validResponse.VisitGetPlaygroundResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("Unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+RWW0/sNhD+K9G0D60UNqGtKpGnUlQhJNqCzuUFoSPjTBKj+MJ4Almt8t+P7Gx2ibKA",
-	"zhFv582xv/lm/M3F2YC02lmDhj0UG/CyQS3i8sxqjYbDUrTt/xUUNxv4mbCCAn7K9mbZ1ib7D58mmyF9",
-	"HRpw1lyRdUis0MNwO6Sw2C024GZfklAwll9EDKuypMMKSsF4xEojpMBrh1CAZ1KmhiEFVc6wyvCff+xx",
-	"yjDWSAHYufIbyYfdjr27RxnuDf8QWVpGrtF7UWNYLkkIHzpFWEJxswPeHuB+pvDCAWMfd7XoL9HU3EBx",
-	"nOfpG96i1dJVgClT2ai5NSxk5EYtVAsF9H3/V9/3K2k1pGCEDrakjK072ShIoaMAa5idL7Jsd7IyGO9R",
-	"opekHCtroIDTq4ukspTotSR719oaUmiVROOjXFv6fy8+LoitQ+NtRxJXlupsa+Qzrfho+7FyjQsuWXEb",
-	"adTeySOSH0M4XuWrPMACo3AKCvg9bqXgBDdR4FDHeuqTGqMg84vUyMkOFLlIhKOLEgo4Rz7bnxF6Z0Os",
-	"geW3PJ+EnhrOuVbJaJzd+0A+tWZYvdVZsQOHhc7b0JLJ95iJSnQtv5v7sfoPOO8M9g4lY5ngHuOsP6Dj",
-	"2OWJSAw+TYIu9Dwty7PdUShp9Py3LdfvdpXn42zeNkwdDj9gDj8dyOGQQlaTcM1DG2fSNqHzXF1Zz+db",
-	"0Pcnaz7vHjqk9bJ2opvry2Q8PvAcPApS4q4dSea2n6ejOI64wZEl+UVViTDrX2E5Jw9OzvetlPm1S8Fi",
-	"Gfl1jJPQhzo48HDEdEV7xaj9y7KNwFduvNsQRGL9kgJz8g+dlOh91bXP6jYYitqHRwhZwm2080hhKMdf",
-	"jf2oL7KstVK0jfVcnOQnefhd+BoAAP//U+76BLoIAAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

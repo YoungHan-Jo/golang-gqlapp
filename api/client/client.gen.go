@@ -89,22 +89,25 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// GetComments request
-	GetComments(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetCompanies request
+	GetCompanies(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AddCommentWithBody request with any body
-	AddCommentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// AddCompanyWithBody request with any body
+	AddCompanyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	AddComment(ctx context.Context, body AddCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddCompany(ctx context.Context, body AddCompanyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostGraphqlWithBody request with any body
 	PostGraphqlWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostGraphql(ctx context.Context, body PostGraphqlJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPlayground request
+	GetPlayground(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) GetComments(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetCommentsRequest(c.Server)
+func (c *Client) GetCompanies(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCompaniesRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +118,8 @@ func (c *Client) GetComments(ctx context.Context, reqEditors ...RequestEditorFn)
 	return c.Client.Do(req)
 }
 
-func (c *Client) AddCommentWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddCommentRequestWithBody(c.Server, contentType, body)
+func (c *Client) AddCompanyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddCompanyRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +130,8 @@ func (c *Client) AddCommentWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-func (c *Client) AddComment(ctx context.Context, body AddCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddCommentRequest(c.Server, body)
+func (c *Client) AddCompany(ctx context.Context, body AddCompanyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddCompanyRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +166,20 @@ func (c *Client) PostGraphql(ctx context.Context, body PostGraphqlJSONRequestBod
 	return c.Client.Do(req)
 }
 
-// NewGetCommentsRequest generates requests for GetComments
-func NewGetCommentsRequest(server string) (*http.Request, error) {
+func (c *Client) GetPlayground(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPlaygroundRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewGetCompaniesRequest generates requests for GetCompanies
+func NewGetCompaniesRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -172,7 +187,7 @@ func NewGetCommentsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/comments")
+	operationPath := fmt.Sprintf("/companies")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -190,19 +205,19 @@ func NewGetCommentsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewAddCommentRequest calls the generic AddComment builder with application/json body
-func NewAddCommentRequest(server string, body AddCommentJSONRequestBody) (*http.Request, error) {
+// NewAddCompanyRequest calls the generic AddCompany builder with application/json body
+func NewAddCompanyRequest(server string, body AddCompanyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAddCommentRequestWithBody(server, "application/json", bodyReader)
+	return NewAddCompanyRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewAddCommentRequestWithBody generates requests for AddComment with any type of body
-func NewAddCommentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewAddCompanyRequestWithBody generates requests for AddCompany with any type of body
+func NewAddCompanyRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -210,7 +225,7 @@ func NewAddCommentRequestWithBody(server string, contentType string, body io.Rea
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/comments")
+	operationPath := fmt.Sprintf("/companies")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -270,6 +285,33 @@ func NewPostGraphqlRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
+// NewGetPlaygroundRequest generates requests for GetPlayground
+func NewGetPlaygroundRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/playground")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -313,29 +355,32 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// GetCommentsWithResponse request
-	GetCommentsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCommentsResponse, error)
+	// GetCompaniesWithResponse request
+	GetCompaniesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCompaniesResponse, error)
 
-	// AddCommentWithBodyWithResponse request with any body
-	AddCommentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddCommentResponse, error)
+	// AddCompanyWithBodyWithResponse request with any body
+	AddCompanyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddCompanyResponse, error)
 
-	AddCommentWithResponse(ctx context.Context, body AddCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*AddCommentResponse, error)
+	AddCompanyWithResponse(ctx context.Context, body AddCompanyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddCompanyResponse, error)
 
 	// PostGraphqlWithBodyWithResponse request with any body
 	PostGraphqlWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostGraphqlResponse, error)
 
 	PostGraphqlWithResponse(ctx context.Context, body PostGraphqlJSONRequestBody, reqEditors ...RequestEditorFn) (*PostGraphqlResponse, error)
+
+	// GetPlaygroundWithResponse request
+	GetPlaygroundWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPlaygroundResponse, error)
 }
 
-type GetCommentsResponse struct {
+type GetCompaniesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Comment
+	JSON200      *Company
 	JSONDefault  *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r GetCommentsResponse) Status() string {
+func (r GetCompaniesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -343,22 +388,22 @@ func (r GetCommentsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetCommentsResponse) StatusCode() int {
+func (r GetCompaniesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type AddCommentResponse struct {
+type AddCompanyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Comment
+	JSON200      *Company
 	JSONDefault  *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r AddCommentResponse) Status() string {
+func (r AddCompanyResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -366,7 +411,7 @@ func (r AddCommentResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AddCommentResponse) StatusCode() int {
+func (r AddCompanyResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -399,30 +444,53 @@ func (r PostGraphqlResponse) StatusCode() int {
 	return 0
 }
 
-// GetCommentsWithResponse request returning *GetCommentsResponse
-func (c *ClientWithResponses) GetCommentsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCommentsResponse, error) {
-	rsp, err := c.GetComments(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetCommentsResponse(rsp)
+type GetPlaygroundResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Playground
+	JSONDefault  *Error
 }
 
-// AddCommentWithBodyWithResponse request with arbitrary body returning *AddCommentResponse
-func (c *ClientWithResponses) AddCommentWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddCommentResponse, error) {
-	rsp, err := c.AddCommentWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
+// Status returns HTTPResponse.Status
+func (r GetPlaygroundResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
 	}
-	return ParseAddCommentResponse(rsp)
+	return http.StatusText(0)
 }
 
-func (c *ClientWithResponses) AddCommentWithResponse(ctx context.Context, body AddCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*AddCommentResponse, error) {
-	rsp, err := c.AddComment(ctx, body, reqEditors...)
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPlaygroundResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// GetCompaniesWithResponse request returning *GetCompaniesResponse
+func (c *ClientWithResponses) GetCompaniesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCompaniesResponse, error) {
+	rsp, err := c.GetCompanies(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAddCommentResponse(rsp)
+	return ParseGetCompaniesResponse(rsp)
+}
+
+// AddCompanyWithBodyWithResponse request with arbitrary body returning *AddCompanyResponse
+func (c *ClientWithResponses) AddCompanyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddCompanyResponse, error) {
+	rsp, err := c.AddCompanyWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddCompanyResponse(rsp)
+}
+
+func (c *ClientWithResponses) AddCompanyWithResponse(ctx context.Context, body AddCompanyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddCompanyResponse, error) {
+	rsp, err := c.AddCompany(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddCompanyResponse(rsp)
 }
 
 // PostGraphqlWithBodyWithResponse request with arbitrary body returning *PostGraphqlResponse
@@ -442,22 +510,31 @@ func (c *ClientWithResponses) PostGraphqlWithResponse(ctx context.Context, body 
 	return ParsePostGraphqlResponse(rsp)
 }
 
-// ParseGetCommentsResponse parses an HTTP response from a GetCommentsWithResponse call
-func ParseGetCommentsResponse(rsp *http.Response) (*GetCommentsResponse, error) {
+// GetPlaygroundWithResponse request returning *GetPlaygroundResponse
+func (c *ClientWithResponses) GetPlaygroundWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetPlaygroundResponse, error) {
+	rsp, err := c.GetPlayground(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPlaygroundResponse(rsp)
+}
+
+// ParseGetCompaniesResponse parses an HTTP response from a GetCompaniesWithResponse call
+func ParseGetCompaniesResponse(rsp *http.Response) (*GetCompaniesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetCommentsResponse{
+	response := &GetCompaniesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Comment
+		var dest Company
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -475,22 +552,22 @@ func ParseGetCommentsResponse(rsp *http.Response) (*GetCommentsResponse, error) 
 	return response, nil
 }
 
-// ParseAddCommentResponse parses an HTTP response from a AddCommentWithResponse call
-func ParseAddCommentResponse(rsp *http.Response) (*AddCommentResponse, error) {
+// ParseAddCompanyResponse parses an HTTP response from a AddCompanyWithResponse call
+func ParseAddCompanyResponse(rsp *http.Response) (*AddCompanyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AddCommentResponse{
+	response := &AddCompanyResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Comment
+		var dest Company
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -532,6 +609,39 @@ func ParsePostGraphqlResponse(rsp *http.Response) (*PostGraphqlResponse, error) 
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPlaygroundResponse parses an HTTP response from a GetPlaygroundWithResponse call
+func ParseGetPlaygroundResponse(rsp *http.Response) (*GetPlaygroundResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPlaygroundResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Playground
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
 
 	}
 
