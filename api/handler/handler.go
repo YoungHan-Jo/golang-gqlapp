@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"net/http"
+	"fmt"
 
 	gql_handler "github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
 	"github.com/younghan-jo/gqlgen-todos/api/graph"
 	gql_middleware "github.com/younghan-jo/gqlgen-todos/api/graph/middleware"
@@ -32,18 +33,23 @@ func NewHandler() (*Handler, error) {
 	}, nil
 }
 
-// AddComment implements ServerInterface.
-func (*Handler) AddComment(ctx echo.Context) error {
+// (GET /companies)
+func (h *Handler) GetCompanies(ctx echo.Context) error {
 	panic("unimplemented")
 }
 
-// GetComments implements ServerInterface.
-func (*Handler) GetComments(ctx echo.Context) error {
-	return ctx.String(http.StatusOK, "OK")
-	// panic("unimplemented")
+// (POST /companies)
+func (h *Handler) AddCompany(ctx echo.Context) error {
+	panic("unimplemented")
 }
 
 func (h *Handler) PostGraphql(c echo.Context) error {
 	h.gql.ServeHTTP(c.Response(), c.Request())
+	return nil
+}
+
+func (h *Handler) GetPlayground(c echo.Context) error {
+	fmt.Println("playground")
+	playground.Handler("GraphQL playground", "/graphql").ServeHTTP(c.Response(), c.Request())
 	return nil
 }

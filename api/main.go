@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+
 	svc := server.NewServer()
 	go func() {
 		if err := svc.Run(); err != nil {

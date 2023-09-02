@@ -7,19 +7,22 @@ import (
 	"time"
 )
 
-// Comment defines model for Comment.
-type Comment struct {
-	CreatedAt *time.Time `json:"created_at,omitempty"`
-	Id        *int64     `json:"id,omitempty"`
-	Text      string     `json:"text"`
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
-}
-
 // CommonProperties defines model for CommonProperties.
 type CommonProperties struct {
 	CreatedAt *time.Time `json:"created_at,omitempty"`
-	Id        *int64     `json:"id,omitempty"`
+	Id        *[]byte    `json:"id,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+}
+
+// Company defines model for Company.
+type Company struct {
+	CreatedAt          *time.Time `json:"created_at,omitempty"`
+	IconImgUrl         *string    `json:"icon_img_url,omitempty"`
+	Id                 *[]byte    `json:"id,omitempty"`
+	Name               string     `json:"name"`
+	RepresentativeName *string    `json:"representative_name,omitempty"`
+	Status             *string    `json:"status,omitempty"`
+	UpdatedAt          *time.Time `json:"updated_at,omitempty"`
 }
 
 // Error defines model for Error.
@@ -27,9 +30,17 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-// NewComment defines model for NewComment.
-type NewComment struct {
-	Text string `json:"text"`
+// NewCompany defines model for NewCompany.
+type NewCompany struct {
+	IconImgUrl         *string `json:"icon_img_url,omitempty"`
+	Name               string  `json:"name"`
+	RepresentativeName *string `json:"representative_name,omitempty"`
+	Status             *string `json:"status,omitempty"`
+}
+
+// Playground defines model for Playground.
+type Playground struct {
+	Message string `json:"message"`
 }
 
 // PostGraphqlJSONBody defines parameters for PostGraphql.
@@ -41,8 +52,8 @@ type PostGraphqlJSONBody struct {
 	Variables *map[string]interface{} `json:"variables,omitempty"`
 }
 
-// AddCommentJSONRequestBody defines body for AddComment for application/json ContentType.
-type AddCommentJSONRequestBody = NewComment
+// AddCompanyJSONRequestBody defines body for AddCompany for application/json ContentType.
+type AddCompanyJSONRequestBody = NewCompany
 
 // PostGraphqlJSONRequestBody defines body for PostGraphql for application/json ContentType.
 type PostGraphqlJSONRequestBody PostGraphqlJSONBody

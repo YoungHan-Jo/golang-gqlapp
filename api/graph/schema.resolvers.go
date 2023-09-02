@@ -6,36 +6,24 @@ package graph
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
+	"time"
 
 	"github.com/younghan-jo/gqlgen-todos/api/graph/model"
 )
 
-// CreateTodo is the resolver for the createTodo field.
-func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	todo := &model.Todo{
-		Text: input.Text,
-		ID:   fmt.Sprintf("T%d", rand.Int()),
-		User: &model.User{ID: input.UserID, Name: "User " + input.UserID},
-	}
-	r.todos = append(r.todos, todo)
-	return todo, nil
-}
-
 // CreateCompany is the resolver for the createCompany field.
 func (r *mutationResolver) CreateCompany(ctx context.Context, input *model.NewCompany) (*model.Company, error) {
-	company := &model.Company{
-		ID:   fmt.Sprintf("T%d", rand.Int()),
-		Name: input.Name,
+	newCompany := &model.Company{
+		ID:                 "1",
+		Name:               input.Name,
+		RepresentativeName: input.RepresentativeName,
+		Status:             input.Status,
+		IconImgURL:         input.IconImgURL,
+		CreatedAt:          time.Now().Format(time.RFC3339),
+		UpdatedAt:          time.Now().Format(time.RFC3339),
 	}
-	r.companies = append(r.companies, company)
-	return company, nil
-}
-
-// Todos is the resolver for the todos field.
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	return r.todos, nil
+	r.companies = append(r.companies, newCompany)
+	return newCompany, nil
 }
 
 // Companies is the resolver for the companies field.
