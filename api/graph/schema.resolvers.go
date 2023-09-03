@@ -6,29 +6,57 @@ package graph
 
 import (
 	"context"
-	"time"
+	"encoding/hex"
 
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/younghan-jo/gqlgen-todos/api/boiler"
 	"github.com/younghan-jo/gqlgen-todos/api/graph/model"
 )
 
 // CreateCompany is the resolver for the createCompany field.
 func (r *mutationResolver) CreateCompany(ctx context.Context, input *model.NewCompany) (*model.Company, error) {
-	newCompany := &model.Company{
-		ID:                 "1",
+
+	comp := boiler.Company{
 		Name:               input.Name,
 		RepresentativeName: input.RepresentativeName,
 		Status:             input.Status,
-		IconImgURL:         input.IconImgURL,
-		CreatedAt:          time.Now().Format(time.RFC3339),
-		UpdatedAt:          time.Now().Format(time.RFC3339),
+		IconImgURL:         null.StringFrom(input.IconImgURL),
 	}
-	r.companies = append(r.companies, newCompany)
-	return newCompany, nil
+
+	if err := comp.Insert(ctx, boil.GetContextDB(), boil.Infer()); err != nil {
+		return nil, err
+	}
+
+	return &model.Company{
+		ID:                 hex.EncodeToString(comp.ID),
+		Name:               comp.Name,
+		RepresentativeName: comp.RepresentativeName,
+		Status:             comp.Status,
+		IconImgURL:         comp.IconImgURL.String,
+	}, nil
 }
 
 // Companies is the resolver for the companies field.
 func (r *queryResolver) Companies(ctx context.Context) ([]*model.Company, error) {
-	return r.companies, nil
+	companies, err := boiler.Companies().All(ctx, boil.GetContextDB())
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*model.Company
+
+	for _, comp := range companies {
+		result = append(result, &model.Company{
+			ID:                 hex.EncodeToString(comp.ID),
+			Name:               comp.Name,
+			RepresentativeName: comp.RepresentativeName,
+			Status:             comp.Status,
+			IconImgURL:         comp.IconImgURL.String,
+		})
+	}
+
+	return result, nil
 }
 
 // Mutation returns MutationResolver implementation.
