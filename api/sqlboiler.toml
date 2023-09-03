@@ -1,0 +1,11 @@
+output   = "boiler"
+wipe     = true
+no-tests = true
+
+[psql]
+  dbname = "kikumemodb"
+  user = "postgres"
+  pass = "postgres"
+  host = "localhost"
+  port = 5432
+  sslmode = "disable"
